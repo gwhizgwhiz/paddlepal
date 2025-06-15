@@ -1,7 +1,4 @@
-// LoginPage.jsx
-// Fully styled and functional login screen for PaddlePal using Supabase
-
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import supabase from '../supabaseClient'
 import '../App.css'
@@ -13,41 +10,41 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        navigate('/dashboard') // already logged in
-      }
-    }
-    checkSession()
-  }, [navigate])
-
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+  e.preventDefault()
+  setError('')
+  setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  console.log('[Login] Attempting login...')
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      console.error('Login error:', error.message)
-      setError(error.message)
-      setLoading(false)
-    } else {
-      console.log('Login success — rechecking session')
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        navigate('/dashboard')
-      } else {
-        setError('Login succeeded, but session is not active.')
-        setLoading(false)
-      }
-    }
+  console.log('[Login] Response:', { data, error })
+
+  if (error) {
+    console.error('[Login] Error:', error.message)
+    setError(error.message)
+    setLoading(false)
+    return
   }
+
+  // Manual session check
+  let session = data?.session
+  if (!session) {
+    await new Promise(res => setTimeout(res, 250)) // optional buffer
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData?.session) {
+      console.warn('[Login] No session after fallback', sessionError)
+      setError('Login failed. Please try again.')
+      setLoading(false)
+      return
+    }
+    session = sessionData.session
+  }
+
+  console.log('[Login] Login successful. Navigating to dashboard.')
+  navigate('/dashboard')
+}
+
 
   return (
     <div className="page-wrapper">
@@ -55,26 +52,30 @@ export default function LoginPage() {
         <h2>Log In</h2>
         <form onSubmit={handleLogin} className="page-form">
           <input
-            type="email"
             className="input-dark"
+            type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+
           <input
-            type="password"
             className="input-dark"
+            type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <button type="submit" className="btn-primary" disabled={loading}>
+
+          <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Logging in…' : 'Log In'}
           </button>
         </form>
+
         {error && <p className="error">{error}</p>}
+
         <div className="form-footer">
           <p>Don’t have an account? <Link to="/signup">Sign up</Link></p>
           <p className="muted">Forgot password? (coming soon)</p>
