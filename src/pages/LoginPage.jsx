@@ -1,3 +1,4 @@
+// src/pages/LoginPage.jsx
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import supabase from '../supabaseClient'
@@ -5,44 +6,37 @@ import '../App.css'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
 
   const handleLogin = async (e) => {
   e.preventDefault()
-  setError('')
+  console.log('🔑 handleLogin:start', { email, password: password && '••••••••' })
+  setError(null)
   setLoading(true)
 
-  console.log('[Login] Attempting login...')
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-
-  console.log('[Login] Response:', { data, error })
-
-  if (error) {
-    console.error('[Login] Error:', error.message)
-    setError(error.message)
+  try {
+    const resp = await supabase.auth.signInWithPassword({ email, password })
+    console.log('✅ handleLogin:response', resp)
+  } catch (err) {
+    console.error('❌ handleLogin:threw', err)
+    setError(err.message || 'Unexpected error')
+  } finally {
+    console.log('⏹ handleLogin:finally — turning off loading')
     setLoading(false)
-    return
   }
 
-  // Manual session check
-  let session = data?.session
-  if (!session) {
-    await new Promise(res => setTimeout(res, 250)) // optional buffer
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !sessionData?.session) {
-      console.warn('[Login] No session after fallback', sessionError)
-      setError('Login failed. Please try again.')
-      setLoading(false)
-      return
-    }
-    session = sessionData.session
+  console.log('➡️ handleLogin:about to navigate')
+  // try both:
+  try {
+    navigate('/dashboard')
+    console.log('🚀 navigate called')
+  } catch (navErr) {
+    console.error('navigate threw', navErr)
+    window.location.href = '/dashboard'
   }
-
-  console.log('[Login] Login successful. Navigating to dashboard.')
-  navigate('/dashboard')
 }
 
 
@@ -50,13 +44,15 @@ export default function LoginPage() {
     <div className="page-wrapper">
       <div className="signup-card">
         <h2>Log In</h2>
+
         <form onSubmit={handleLogin} className="page-form">
           <input
             className="input-dark"
             type="email"
             placeholder="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
 
@@ -65,11 +61,16 @@ export default function LoginPage() {
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
 
-          <button className="btn-primary" type="submit" disabled={loading}>
+          <button
+            className="btn-primary"
+            type="submit"
+            disabled={loading}
+          >
             {loading ? 'Logging in…' : 'Log In'}
           </button>
         </form>
@@ -77,7 +78,9 @@ export default function LoginPage() {
         {error && <p className="error">{error}</p>}
 
         <div className="form-footer">
-          <p>Don’t have an account? <Link to="/signup">Sign up</Link></p>
+          <p>
+            Don’t have an account? <Link to="/signup">Sign up</Link>
+          </p>
           <p className="muted">Forgot password? (coming soon)</p>
         </div>
       </div>

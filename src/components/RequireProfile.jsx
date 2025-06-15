@@ -1,28 +1,29 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import supabase from '../supabaseClient'
+// File: src/components/RequireProfile.jsx
+import { Navigate } from 'react-router-dom'
+import useCurrentUser from '../hooks/useCurrentUser'
+import LoadingSpinner from './LoadingSpinner'
 
+/**
+ * Ensures the authenticated user has a completed profile.
+ * - Redirects to /signup if not signed in
+ * - Redirects to /profile/complete if signed in but profile missing
+ * - Shows spinner while loading
+ * - Renders children when profile exists
+ */
 export default function RequireProfile({ children }) {
-  const [checking, setChecking] = useState(true)
-  const navigate = useNavigate()
+  const { user, profile, loading } = useCurrentUser()
 
-  useEffect(() => {
-    const check = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return navigate('/signup')
+  if (loading) {
+    return <LoadingSpinner />
+  }
 
-      const { data: profile } = await supabase
-        .from('players')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .single()
+  if (!user) {
+    return <Navigate to="/signup" replace />
+  }
 
-      if (!profile) return navigate('/profile/complete')
-      setChecking(false)
-    }
-    check()
-  }, [navigate])
+  if (!profile) {
+    return <Navigate to="/profile/complete" replace />
+  }
 
-  if (checking) return null
   return children
 }
