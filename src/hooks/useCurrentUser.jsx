@@ -1,67 +1,68 @@
 // File: src/hooks/useCurrentUser.js
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import supabase from '../supabaseClient'
 
-/**
- * Hook to load the current authenticated user and their profile,
- * and subscribe to profile updates so avatar changes propagate.
- * Returns:
- *  - user: Supabase Auth user object or null
- *  - profile: row from `players` table matching user.id, or null
- *  - loading: boolean during initial fetch
- */
 export default function useCurrentUser() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let isMounted = true
-    let profileSubscription = null
+  const refreshProfile = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        console.error('Session fetch error:', sessionError)
+        setUser(null)
+        setProfile(null)
+        return
+      }
 
-    const init = async () => {
-      try {
-        // Hydrate authenticated user
-        const { data: { user: authUser }, error: authErr } =
-          await supabase.auth.getUser()
-        if (authErr) throw authErr
-        if (!isMounted) return
-        setUser(authUser)
+      const authUser = session?.user ?? null
+      setUser(authUser)
 
-        if (authUser) {
-          // Fetch initial profile
-          const { data: prof, error: profErr } = await supabase
-            .from('players')
+      if (authUser) {
+        // Try players table first
+        let { data: prof, error: profErr } = await supabase
+          .from('players')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .single()
+
+        if (profErr || !prof) {
+          // Then try coaches
+          const { data: coach, error: coachErr } = await supabase
+            .from('coaches')
             .select('*')
             .eq('user_id', authUser.id)
             .single()
-          if (profErr) throw profErr
-          if (isMounted) setProfile(prof)
 
-          // Subscribe to realtime updates on this user's profile
-          profileSubscription = supabase
-            .from(`players:user_id=eq.${authUser.id}`)
-            .on('UPDATE', payload => {
-              if (isMounted) setProfile(payload.new)
-            })
-            .subscribe()
+          if (coachErr || !coach) {
+            console.error('Profile not found in players or coaches')
+            setProfile(null)
+          } else {
+            setProfile(coach)
+          }
+        } else {
+          setProfile(prof)
         }
-      } catch (err) {
-        console.error('useCurrentUser error:', err)
-      } finally {
-        if (isMounted) setLoading(false)
+      } else {
+        setProfile(null)
       }
-    }
-
-    init()
-
-    return () => {
-      isMounted = false
-      if (profileSubscription) {
-        supabase.removeSubscription(profileSubscription)
-      }
+    } catch (err) {
+      console.error('useCurrentUser unexpected error:', err)
+      setUser(null)
+      setProfile(null)
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    refreshProfile()
+    window.addEventListener('profile-updated', refreshProfile)
+    return () => window.removeEventListener('profile-updated', refreshProfile)
+  }, [refreshProfile])
 
   return { user, profile, loading }
 }

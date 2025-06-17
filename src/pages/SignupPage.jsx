@@ -14,7 +14,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState('player')
-  const [zipcode, setZipcode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,13 +22,13 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-  email,
-  password,
-  options: {
-    emailRedirectTo: `${window.location.origin}/profile/complete`
-  }
-})
+  const { data, error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}'/check-email`,
+    }
+  })
 
 const user = data?.user
 const session = data?.session
@@ -46,7 +45,7 @@ if (signUpError || isAlreadyRegistered) {
     // Save minimal info for post-confirmation insert
     localStorage.setItem('signupRole', role)
     localStorage.setItem('signupFullName', fullName)
-    localStorage.setItem('signupZipcode', zipcode)
+
 
     navigate('/check-email')
   }
@@ -87,14 +86,14 @@ if (signUpError || isAlreadyRegistered) {
             <option value="player">Player</option>
             <option value="coach">Coach</option>
           </select>
-
+{/* 
           <input
             className="input-dark"
             type="text"
             placeholder="Zip Code"
             value={zipcode}
             onChange={(e) => setZipcode(e.target.value)}
-          />
+          /> */}
 
           <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Signing Up…' : 'Sign Up'}

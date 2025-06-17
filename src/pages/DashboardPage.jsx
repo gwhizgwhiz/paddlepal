@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../supabaseClient'
+import LoadingSpinner from '../components/LoadingSpinner'
+import maleAvatar from '../assets/avatars/male.png'
+import femaleAvatar from '../assets/avatars/female.png'
+import neutralAvatar from '../assets/avatars/neutral.png'
 import '../App.css'
 
 export default function DashboardPage() {
@@ -35,12 +39,12 @@ export default function DashboardPage() {
         .single()
 
       let paddleData = null
-if (playerData?.paddle_id && typeof playerData.paddle_id === 'string' && playerData.paddle_id.length === 36) {
-  const { data, error } = await supabase
-    .from('paddle_options')
-    .select('*')
-    .eq('id', playerData.paddle_id)
-    .single()
+      if (playerData?.paddle_id && typeof playerData.paddle_id === 'string' && playerData.paddle_id.length === 36) {
+        const { data, error } = await supabase
+        .from('paddle_options')
+        .select('*')
+        .eq('id', playerData.paddle_id)
+        .single()
 
   if (error) console.warn('Paddle fetch error:', error.message)
   paddleData = data
@@ -56,11 +60,15 @@ if (playerData?.paddle_id && typeof playerData.paddle_id === 'string' && playerD
     fetchData()
   }, [navigate])
 
-  if (loading || !user || !player) {
-    return <div className="page-container">Loading your profile...</div>
-  }
+  if (loading) return <LoadingSpinner />;
 
-  const avatarUrl = user.avatar_url || '/img/default_avatar.png'
+
+  const avatarUrl = player.avatar_url || (
+  player.gender === 'female' ? femaleAvatar :
+  player.gender === 'male' ? maleAvatar :
+  neutralAvatar
+);
+
 
   return (
     <div className="page-container">
@@ -70,9 +78,9 @@ if (playerData?.paddle_id && typeof playerData.paddle_id === 'string' && playerD
           <img src={avatarUrl} alt="Avatar" className="profile-avatar" />
           <div className="profile-details">
             <strong>{user.full_name}</strong><br />
+            {player.city}, {player.state}<br />
             <small>{user.role}</small><br />
             <p>
-              <strong>Location:</strong> {player.zipcode} ({player.city}, {player.state})<br />
               <strong>Rating:</strong> {player.rating_level}<br />
               <strong>Play Style:</strong> {player.play_style}<br />
               <strong>Handedness:</strong> {player.handedness}<br />

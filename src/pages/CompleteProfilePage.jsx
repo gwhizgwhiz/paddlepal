@@ -6,7 +6,6 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import maleAvatar from '../assets/avatars/male.png'
 import femaleAvatar from '../assets/avatars/female.png'
 import neutralAvatar from '../assets/avatars/neutral.png'
-import CenteredPage from '../components/CenteredPage'
 import '../App.css'
 
 export default function CompleteProfilePage() {
@@ -226,7 +225,6 @@ if (!user) {
   if (loading) return <LoadingSpinner />
 
   return (
-    <CenteredPage>
     <div className="page-wrapper">
       <div className="page-container">
         <h2>Complete Your Profile</h2>
@@ -304,6 +302,5 @@ if (!user) {
         {error && <p className="error">{error}</p>}
       </div>
     </div>
-    </CenteredPage>
   )
 }
