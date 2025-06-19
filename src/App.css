@@ -295,6 +295,7 @@ body {
   border-radius: 50%;
   border: 2px solid var(--pb-green);
   object-fit: cover;
+  margin-bottom: 1rem;
 }
 
 .profile-details {
@@ -419,3 +420,21 @@ body {
   flex: 1;
   min-width: 0;
 }
+
+/* Reserve space so nothing moves when spinner appears/disappears */
+.spinner-placeholder {
+  position: relative;
+  min-height: 400px;    /* adjust to roughly match your form’s height */
+  width: 100%;
+}
+
+/* Center the spinner within its container */
+.spinner-placeholder .loading-spinner,
+.spinner-placeholder > div /* if your spinner renders a wrapper div */
+{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+

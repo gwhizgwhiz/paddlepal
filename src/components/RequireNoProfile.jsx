@@ -1,19 +1,14 @@
 // File: src/components/RequireNoProfile.jsx
 import { Navigate } from 'react-router-dom'
-import useCurrentUser from '../hooks/useCurrentUser'
-import LoadingSpinner from './LoadingSpinner'
+import { useUser } from '../context/UserContext'
 
 /**
- * Redirects authenticated users who already have a profile out to /dashboard.
- * If no user, sends to /signup.
- * Otherwise renders children.
+ * If not signed in ⇒ send to signup.
+ * If already has a profile ⇒ send to dashboard.
+ * Otherwise render children (e.g. CompleteProfilePage).
  */
 export default function RequireNoProfile({ children }) {
-  const { user, profile, loading } = useCurrentUser()
-
-  if (loading) {
-    return <LoadingSpinner />
-  }
+  const { user, profile } = useUser()
 
   if (!user) {
     return <Navigate to="/signup" replace />
@@ -23,5 +18,5 @@ export default function RequireNoProfile({ children }) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return children
+  return <>{children}</>
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../supabaseClient';
 import AvatarUploader from '../components/AvatarUploader';
+import { useUser } from '../context/UserContext'
 import LoadingSpinner from '../components/LoadingSpinner';
 import maleAvatar from '../assets/avatars/male.png';
 import femaleAvatar from '../assets/avatars/female.png';
@@ -11,7 +12,7 @@ import '../App.css';
 export default function ProfileEditPage() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const { user, updateAvatar } = useUser();
   const [gender, setGender] = useState('');
   const [formData, setFormData] = useState({
     rating_level: '',
@@ -117,7 +118,10 @@ export default function ProfileEditPage() {
   }
 };
   const handleAvatarUpload = (url) => {
-    if (url) setAvatarUrl(url);
+    if (url) {
+     setAvatarUrl(url)
+     updateAvatar(url)    // <-- tell the context right away
+   }
   };
 
   const handleSubmit = async (e) => {
@@ -164,18 +168,25 @@ export default function ProfileEditPage() {
     if (playerError) {
       setError(playerError.message);
     } else {
-      window.dispatchEvent(new Event('profile-updated'))
+      // window.dispatchEvent(new Event('profile-updated'))
+      
       navigate('/dashboard');
     }
 
     setLoading(false);
   };
 
-  if (loading) return <LoadingSpinner />;
+  // if (loading) return <LoadingSpinner />;
 
   return (
     <div className="page-wrapper">
       <div className="page-container">
+         {/* Spinner overlay */}
+        {loading && (
+          <div className="spinner-overlay">
+            <LoadingSpinner />
+          </div>
+        )}
         <h2>Edit Your Profile</h2>
         <form onSubmit={handleSubmit} className="page-form">
           <select name="gender" value={gender} onChange={handleChange} required>

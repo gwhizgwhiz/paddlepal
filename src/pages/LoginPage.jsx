@@ -8,43 +8,33 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')
+  const [error,    setError]    = useState(null)
   const [loading,  setLoading]  = useState(false)
 
   const handleLogin = async (e) => {
-  e.preventDefault()
-  console.log('🔑 handleLogin:start', { email, password: password && '••••••••' })
-  setError(null)
-  setLoading(true)
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
 
-  try {
-    const resp = await supabase.auth.signInWithPassword({ email, password })
-    console.log('✅ handleLogin:response', resp)
-  } catch (err) {
-    console.error('❌ handleLogin:threw', err)
-    setError(err.message || 'Unexpected error')
-  } finally {
-    console.log('⏹ handleLogin:finally — turning off loading')
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
     setLoading(false)
-  }
 
-  console.log('➡️ handleLogin:about to navigate')
-  // try both:
-  try {
-    navigate('/dashboard')
-    console.log('🚀 navigate called')
-  } catch (navErr) {
-    console.error('navigate threw', navErr)
-    window.location.href = '/dashboard'
+    if (signInError) {
+      setError(signInError.message)
+    } else {
+      // On success, just navigate—your UserProvider will pick up the new session
+      navigate('/dashboard', { replace: true })
+    }
   }
-}
-
 
   return (
     <div className="page-wrapper">
       <div className="signup-card">
         <h2>Log In</h2>
-
         <form onSubmit={handleLogin} className="page-form">
           <input
             className="input-dark"
@@ -55,7 +45,6 @@ export default function LoginPage() {
             autoComplete="email"
             required
           />
-
           <input
             className="input-dark"
             type="password"
@@ -65,18 +54,11 @@ export default function LoginPage() {
             autoComplete="current-password"
             required
           />
-
-          <button
-            className="btn-primary"
-            type="submit"
-            disabled={loading}
-          >
+          <button className="btn-primary" type="submit" disabled={loading}>
             {loading ? 'Logging in…' : 'Log In'}
           </button>
         </form>
-
         {error && <p className="error">{error}</p>}
-
         <div className="form-footer">
           <p>
             Don’t have an account? <Link to="/signup">Sign up</Link>

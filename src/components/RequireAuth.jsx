@@ -1,19 +1,15 @@
-// src/components/RequireAuth.jsx
+// File: src/components/RequireAuth.jsx
 import { Navigate } from 'react-router-dom'
-import useCurrentUser from '../hooks/useCurrentUser'
+import { useUser } from '../context/UserContext'
 
 export default function RequireAuth({ children }) {
-  const { user, loading } = useCurrentUser()
+  const { user } = useUser()
 
-  if (loading) {
-    return <div className="loading">Authenticating...</div>
-  }
-
+  // If there’s no user in context, redirect to login/signup
   if (!user) {
-    // not signed in ⇒ send to signup or login
-    return <Navigate to="/signup" replace />
+    return <Navigate to="/login" replace />
   }
 
-  // signed in ⇒ render protected content
-  return children
+  // Otherwise, render the protected content
+  return <>{children}</>
 }

@@ -1,9 +1,8 @@
-// File: src/App.jsx
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import RequireAuth from './components/RequireAuth'
-import RequireNoProfile from './components/RequireNoProfile'
-import RequireProfile from './components/RequireProfile'
+import { useUser } from './context/UserContext'
 import AppLayout from './components/AppLayout'
+import LoadingSpinner from './components/LoadingSpinner'
 
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -14,88 +13,51 @@ import CompleteProfilePage from './pages/CompleteProfilePage'
 import ProfileEditPage from './pages/ProfileEditPage'
 
 export default function App() {
+  const { loading, profile } = useUser()
+
   return (
     <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route
-          path="/"
-          element={
-            <AppLayout>
-              <HomePage />
-            </AppLayout>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <AppLayout>
-              <LoginPage />
-            </AppLayout>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <AppLayout>
-              <SignupPage />
-            </AppLayout>
-          }
-        />
-        <Route
-          path="/check-email"
-          element={
-            <AppLayout>
-              <CheckEmailPage />
-            </AppLayout>
-          }
-        />
+      {loading ? (
+        <div className="full-screen-loader">
+          <LoadingSpinner />
+        </div>
+      ) : (
+        <Routes>
+          <Route path="/" element={<AppLayout><HomePage/></AppLayout>} />
+          <Route path="/login" element={<AppLayout><LoginPage/></AppLayout>} />
+          <Route path="/signup" element={<AppLayout><SignupPage/></AppLayout>} />
+          <Route path="/check-email" element={<AppLayout><CheckEmailPage/></AppLayout>} />
 
-        {/* Protected Dashboard: requires auth + profile */}
-        <Route
-          path="/dashboard"
-          element={
-            <RequireAuth>
-              <RequireProfile>
-                <AppLayout>
-                  <DashboardPage />
-                </AppLayout>
-              </RequireProfile>
-            </RequireAuth>
-          }
-        />
+          <Route
+            path="/dashboard"
+            element={
+              profile
+                ? <AppLayout><DashboardPage/></AppLayout>
+                : <Navigate to="/login" replace />
+            }
+          />
 
-        {/* Complete Profile: signed-in users without a profile */}
-        <Route
-          path="/profile/complete"
-          element={
-            <RequireAuth>
-              <RequireNoProfile>
-                <AppLayout>
-                  <CompleteProfilePage />
-                </AppLayout>
-              </RequireNoProfile>
-            </RequireAuth>
-          }
-        />
+          <Route
+            path="/profile/complete"
+            element={
+              profile
+                ? <Navigate to="/dashboard" replace />
+                : <AppLayout><CompleteProfilePage/></AppLayout>
+            }
+          />
 
-        {/* Edit Profile: signed-in users with a profile */}
-        <Route
-          path="/profile/edit"
-          element={
-            <RequireAuth>
-              <RequireProfile>
-                <AppLayout>
-                  <ProfileEditPage />
-                </AppLayout>
-              </RequireProfile>
-            </RequireAuth>
-          }
-        />
+          <Route
+            path="/profile/edit"
+            element={
+              profile
+                ? <AppLayout><ProfileEditPage/></AppLayout>
+                : <Navigate to="/profile/complete" replace />
+            }
+          />
 
-        {/* Fallback: redirect unknown routes to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
     </Router>
   )
 }
