@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import supabase from '../supabaseClient'
 
 // Default avatars by gender
-const DEFAULT_AVATARS = {
+export const DEFAULT_AVATARS = {
   male: '/src/assets/avatars/male.png',
   female: '/src/assets/avatars/female.png',
   nonbinary: '/src/assets/avatars/neutral.png',

@@ -1,19 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import supabase from '../supabaseClient';
-import AvatarUploader from '../components/AvatarUploader';
-import { useUser } from '../context/UserContext'
-import LoadingSpinner from '../components/LoadingSpinner';
-import maleAvatar from '../assets/avatars/male.png';
-import femaleAvatar from '../assets/avatars/female.png';
-import neutralAvatar from '../assets/avatars/neutral.png';
-import '../App.css';
+// File: src/pages/ProfileEditPage.jsx
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import supabase from '../supabaseClient'
+import AvatarUploader from '../components/AvatarUploader'
+import LoadingSpinner from '../components/LoadingSpinner'
+import { useUser, DEFAULT_AVATARS } from '../context/UserContext'
+import '../App.css'
 
 export default function ProfileEditPage() {
-  const navigate = useNavigate();
-  const [userId, setUserId] = useState(null);
-  const { user, updateAvatar } = useUser();
-  const [gender, setGender] = useState('');
+  const navigate = useNavigate()
+  const { user, updateAvatar } = useUser()
+  const [gender, setGender] = useState('')
   const [formData, setFormData] = useState({
     rating_level: '',
     play_style: '',
@@ -26,169 +23,137 @@ export default function ProfileEditPage() {
     zipcode: '',
     city: '',
     state: ''
-  });
-  const [paddleOptions, setPaddleOptions] = useState([]);
-  const [modelOptions, setModelOptions] = useState([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  })
+  const [paddleOptions, setPaddleOptions] = useState([])
+  const [modelOptions, setModelOptions]     = useState([])
+  const [loading, setLoading]               = useState(false)
+  const [error, setError]                   = useState('')
 
+  // Block until user is loaded
+  if (!user) return <LoadingSpinner />
+
+  // Load paddles & existing profile
   useEffect(() => {
     const init = async () => {
-      // ✅ Step 1: Get current user
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) return navigate('/signup');
-      setUserId(user.id);
+      const { data: { user: authUser }, error } = await supabase.auth.getUser()
+      if (error || !authUser) return navigate('/signup')
 
-      // ✅ Step 2: Load paddles
-      const { data: allPaddles } = await supabase.from('paddle_options').select('brand, model');
-      setPaddleOptions(allPaddles || []);
+      // paddles
+      const { data: allPaddles } = await supabase
+        .from('paddle_options')
+        .select('brand, model')
+      setPaddleOptions(allPaddles || [])
 
-      // ✅ Step 3: Load player record (includes avatar + gender now)
-      const { data: player } = await supabase.from('players').select('*').eq('user_id', user.id).single();
+      // profile
+      const { data: player } = await supabase
+        .from('players')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .single()
       if (player) {
-        setFormData(prev => ({ ...prev, ...player }));
-        setAvatarUrl(player.avatar_url || '');
-        setGender(player.gender || '');
-
-        if (player.paddle_id) {
-          const { data: paddle } = await supabase
-            .from('paddle_options')
-            .select('brand, model')
-            .eq('id', player.paddle_id)
-            .single();
-
-          if (paddle) {
-            setFormData(prev => ({
-              ...prev,
-              paddle_brand: paddle.brand,
-              paddle_model: paddle.model
-            }));
-          }
-        } else if (player.custom_paddle) {
-          const [brand, ...modelParts] = player.custom_paddle.split(' ');
-          setFormData(prev => ({
-            ...prev,
-            paddle_brand: brand,
-            paddle_model: modelParts.join(' ')
-          }));
-        }
+        setFormData(prev => ({ ...prev, ...player }))
+        setGender(player.gender || '')
       }
-    };
-    init();
-  }, [navigate]);
+    }
+    init()
+  }, [navigate])
 
+  // update modelOptions when brand changes
   useEffect(() => {
-    const models = paddleOptions.filter(p => p.brand === formData.paddle_brand).map(p => p.model);
-    setModelOptions(models);
-  }, [formData.paddle_brand, paddleOptions]);
+    const models = paddleOptions
+      .filter(p => p.brand === formData.paddle_brand)
+      .map(p => p.model)
+    setModelOptions(models)
+  }, [formData.paddle_brand, paddleOptions])
 
+  // ZIP → city/state lookup
   useEffect(() => {
-    const fetchLocation = async () => {
-      if (formData.zipcode.length === 5) {
-        try {
-          const res = await fetch(`https://api.zippopotam.us/us/${formData.zipcode}`);
-          const json = await res.json();
+    if (formData.zipcode.length === 5) {
+      fetch(`https://api.zippopotam.us/us/${formData.zipcode}`)
+        .then(r => r.json())
+        .then(json => {
           setFormData(prev => ({
             ...prev,
             city: json.places?.[0]?.['place name'] || '',
             state: json.places?.[0]?.['state abbreviation'] || ''
-          }));
-        } catch {
-          console.warn('ZIP lookup failed');
-        }
-      }
-    };
-    fetchLocation();
-  }, [formData.zipcode]);
+          }))
+        })
+        .catch(() => console.warn('ZIP lookup failed'))
+    }
+  }, [formData.zipcode])
 
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
 
-  if (name === 'gender') {
-    setGender(value);
-
-    if (!avatarUrl || avatarUrl.includes('/avatars/')) {
-      setAvatarUrl(
-        value === 'female' ? femaleAvatar :
-        value === 'male' ? maleAvatar :
-        neutralAvatar
-      );
+    if (name === 'gender') {
+      setGender(value)
+      // instantly apply default avatar for this gender
+      const defUrl = DEFAULT_AVATARS[value] || DEFAULT_AVATARS.prefer_not_to_say
+      updateAvatar(defUrl)
     }
   }
-};
-  const handleAvatarUpload = (url) => {
-    if (url) {
-     setAvatarUrl(url)
-     updateAvatar(url)    // <-- tell the context right away
-   }
-  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
-    let paddleId = null;
-    let customPaddle = null;
-
+    // find or build paddleId / customPaddle
+    let paddleId, customPaddle
     if (formData.paddle_brand && formData.paddle_model) {
       const { data } = await supabase
         .from('paddle_options')
         .select('id')
         .eq('brand', formData.paddle_brand)
         .eq('model', formData.paddle_model)
-        .single();
-
-      if (data) {
-        paddleId = data.id;
-      } else {
-        customPaddle = `${formData.paddle_brand} ${formData.paddle_model}`.trim();
-      }
+        .single()
+      if (data) paddleId = data.id
+      else customPaddle = `${formData.paddle_brand} ${formData.paddle_model}`.trim()
     }
 
+    // upsert profile (including current context avatar_url)
     const { error: playerError } = await supabase
       .from('players')
       .upsert({
-        user_id: userId,
-        gender: gender,
-        rating_level: formData.rating_level,
-        play_style: formData.play_style,
-        handedness: formData.handedness,
-        paddle_id: paddleId,
-        custom_paddle: customPaddle,
-        play_format: formData.play_format,
-        favorite_player: formData.favorite_player,
+        user_id:           user.id,
+        gender,
+        rating_level:      formData.rating_level,
+        play_style:        formData.play_style,
+        handedness:        formData.handedness,
+        paddle_id:         paddleId,
+        custom_paddle:     customPaddle,
+        play_format:       formData.play_format,
+        favorite_player:   formData.favorite_player,
         preferred_surface: formData.preferred_surface,
-        zipcode: formData.zipcode,
-        city: formData.city,
-        state: formData.state
-      }, { onConflict: ['user_id'] });
+        zipcode:           formData.zipcode,
+        city:              formData.city,
+        state:             formData.state,
+        avatar_url:        user.avatar_url
+      }, { onConflict: ['user_id'] })
 
     if (playerError) {
-      setError(playerError.message);
-    } else {
-      // window.dispatchEvent(new Event('profile-updated'))
-      
-      navigate('/dashboard');
+      setError(playerError.message)
+      setLoading(false)
+      return
     }
 
-    setLoading(false);
-  };
-
-  // if (loading) return <LoadingSpinner />;
+    navigate('/dashboard')
+    setLoading(false)
+  }
 
   return (
     <div className="page-wrapper">
       <div className="page-container">
-         {/* Spinner overlay */}
         {loading && (
           <div className="spinner-overlay">
             <LoadingSpinner />
           </div>
         )}
+
         <h2>Edit Your Profile</h2>
         <form onSubmit={handleSubmit} className="page-form">
+
           <select name="gender" value={gender} onChange={handleChange} required>
             <option value="">Gender</option>
             <option value="male">Male</option>
@@ -198,31 +163,36 @@ export default function ProfileEditPage() {
           </select>
 
           <AvatarUploader
-            userId={userId}
-            avatarUrl={avatarUrl}
-            onUpload={handleAvatarUpload}
+            userId={user.id}
+            avatarUrl={user.avatar_url}
+            onUpload={updateAvatar}
             gender={gender}
           />
 
-          <input type="text" name="zipcode" placeholder="Zip Code" value={formData.zipcode} onChange={handleChange} />
+          <input
+            type="text"
+            name="zipcode"
+            placeholder="Zip Code"
+            value={formData.zipcode}
+            onChange={handleChange}
+          />
+
           <div className="form-row">
-              <input
-                type="text"
-                name="city"
-                placeholder="City"
-                value={formData.city}
-                disabled
-                className="form-control"
-              />
-              <input
-                type="text"
-                name="state"
-                placeholder="State"
-                value={formData.state}
-                disabled
-                className="form-control"
-              />
-            </div>
+            <input
+              type="text"
+              name="city"
+              placeholder="City"
+              value={formData.city}
+              disabled
+            />
+            <input
+              type="text"
+              name="state"
+              placeholder="State"
+              value={formData.state}
+              disabled
+            />
+          </div>
 
           <select name="rating_level" value={formData.rating_level ?? ''} onChange={handleChange} required>
             <option value="">Rating Level</option>
@@ -281,8 +251,9 @@ export default function ProfileEditPage() {
             {loading ? 'Saving…' : 'Save Changes'}
           </button>
         </form>
+
         {error && <p className="error">{error}</p>}
       </div>
     </div>
-  );
+  )
 }
