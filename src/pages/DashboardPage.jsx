@@ -81,7 +81,7 @@ export default function DashboardPage() {
             {player.city}, {player.state}<br />
             <small>{user.role}</small><br />
             <p>
-              <strong>Rating:</strong> {player.rating_level}<br />
+              Rating: <strong>{player.rating_level}</strong><br />
               <strong>Play Style:</strong> {player.play_style}<br />
               <strong>Handedness:</strong> {player.handedness}<br />
               <strong>Preferred Surface:</strong> {player.preferred_surface}<br />
@@ -90,9 +90,9 @@ export default function DashboardPage() {
                 ? `${paddle.brand} ${paddle.model}`
                 : player.custom_paddle || 'Not specified'}
             </p>
-            <button className="btn-small btn-outline" onClick={() => navigate('/profile/edit')}>
+            {/* <button className="btn-small btn-outline" onClick={() => navigate('/profile/edit')}>
               Edit My Profile
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

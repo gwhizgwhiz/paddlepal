@@ -32,8 +32,8 @@ export default function AvatarMenu() {
       />
       {open && (
         <div className="dropdown-menu">
-          <button onClick={() => navigate('/profile/edit')}>Profile</button>
-          <button onClick={() => navigate('/settings')}>Settings</button>
+          <button onClick={() => navigate('/dashboard')}>Dashboard</button>
+          <button onClick={() => navigate('/profile/edit')}>Edit Profile</button>
           <button onClick={async () => {
             await supabase.auth.signOut()
             navigate('/login', { replace: true })
