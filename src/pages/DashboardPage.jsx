@@ -15,42 +15,41 @@ export default function DashboardPage() {
   const [paddle, setPaddle] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Analysis state
+  const [uploading, setUploading] = useState(false)
+  const [analysisId, setAnalysisId] = useState(null)
+  const [analysis, setAnalysis] = useState(null)
+
+  // 1) Fetch profile info
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
       const {
         data: { user: authUser },
         error: authError,
       } = await supabase.auth.getUser()
+      if (authError || !authUser) return navigate('/signup')
 
-      if (authError || !authUser) {
-        navigate('/signup')
-        return
-      }
-
-      const { data: userData, error: userError } = await supabase
+      const { data: userData } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single()
-      if (userError) console.warn('User fetch error:', userError.message)
 
-      const { data: playerData, error: playerError } = await supabase
+      const { data: playerData } = await supabase
         .from('players')
         .select('*')
         .eq('user_id', authUser.id)
         .single()
-      if (playerError) console.warn('Player fetch error:', playerError.message)
+      if (!playerData) return navigate('/complete-profile')
 
       let paddleData = null
-      if (playerData?.paddle_id) {
-        const { data, error } = await supabase
+      if (playerData.paddle_id) {
+        const { data } = await supabase
           .from('paddle_options')
           .select('*')
           .eq('id', playerData.paddle_id)
           .single()
-        if (error) console.warn('Paddle fetch error:', error.message)
-        else paddleData = data
+        paddleData = data
       }
 
       setUser(userData)
@@ -58,9 +57,68 @@ export default function DashboardPage() {
       setPaddle(paddleData)
       setLoading(false)
     }
-
     fetchData()
   }, [navigate])
+
+  // 2) Poll analysis status whenever an analysisId appears
+  useEffect(() => {
+    if (!analysisId) return
+    let timer
+    const poll = async () => {
+      const { data } = await supabase
+        .from('analyses')
+        .select('*')
+        .eq('id', analysisId)
+        .single()
+      setAnalysis(data)
+      if (data.status === 'pending' || data.status === 'running') {
+        timer = setTimeout(poll, 2000)
+      }
+    }
+    poll()
+    return () => clearTimeout(timer)
+  }, [analysisId])
+
+  const handleUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  setUploading(true)
+
+  // --- 1) STORAGE UPLOAD ---
+  // build a unique filename (no bucket prefix)
+  const filename = `${Date.now()}_${file.name}`
+
+  // attempt the upload
+  const { data: upData, error: upErr } = await supabase
+    .storage
+    .from('match-videos')
+    .upload(filename, file, { upsert: true })
+
+  console.log('✅ Storage:', { upData, upErr })
+  if (upErr) {
+    // This is strictly a storage error
+    console.error('Storage upload failed:', upErr)
+    setUploading(false)
+    return
+  }
+
+  // --- 2) RPC CALL ---
+  // only if upload succeeded
+  const { data: analysisId, error: rpcErr } = await supabase
+    .rpc('start_analysis', { video_path: filename })
+
+  console.log('✅ RPC:', { analysisId, rpcErr })
+  if (rpcErr) {
+    // This is strictly an RLS / RPC error
+    console.error('start_analysis failed:', rpcErr)
+    setUploading(false)
+    return
+  }
+
+  // --- 3) Kick off polling of the newly created analysis ---
+  setAnalysisId(analysisId)
+  setUploading(false)
+}
 
   if (loading) return <LoadingSpinner />
 
@@ -74,7 +132,7 @@ export default function DashboardPage() {
 
   return (
     <div className="page-container">
-      {/* My Profile */}
+      {/* Profile */}
       <div className="dashboard-section">
         <div className="section-header">My Profile</div>
         <div className="profile-card">
@@ -100,39 +158,39 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Upload Match Video */}
+      {/* Upload & Analysis */}
       <div className="dashboard-section">
-        <div className="section-header">Upload Match Video</div>
+        <div className="section-header">Upload & AI Analysis</div>
         <div className="profile-card">
-          <div className="upload-widget">
-            {/* swap in your real upload component here */}
-            <p>Coming soon…</p>
-            <button className="btn-small btn-outline">
-              Upload Video
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* Upload control */}
+          <label
+            className="btn-small btn-outline"
+            style={{ display: 'block', marginBottom: '1rem', textAlign: 'center' }}
+          >
+            {uploading ? 'Uploading…' : analysisId ? 'Re-upload Video' : 'Upload Match'}
+            <input
+              type="file"
+              accept="video/*"
+              onChange={handleUpload}
+              style={{ display: 'none' }}
+              disabled={uploading}
+            />
+          </label>
 
-      {/* Recent Analyses */}
-      <div className="dashboard-section">
-        <div className="section-header">Recent Analysis</div>
-        <div className="profile-card">
-          <div className="recent-analyses-list">
-            {/* map your analysis items here */}
-            <p>Coming soon…</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Recommended Drills */}
-      <div className="dashboard-section">
-        <div className="section-header">Recommended Drills</div>
-        <div className="profile-card">
-          <div className="drill-suggestions">
-            {/* render your drill suggestions here */}
-            <p>Coming soon…</p>
-          </div>
+          {/* Status / Results */}
+          {!analysisId && <p>Click to upload a match video.</p>}
+          {analysisId && !analysis && <p>Queued for analysis…</p>}
+          {analysis && analysis.status !== 'complete' && (
+            <p>Analysis is {analysis.status}…</p>
+          )}
+          {analysis && analysis.status === 'complete' && (
+            <>
+              <h4>Results</h4>
+              <pre style={{ maxHeight: 200, overflow: 'auto' }}>
+                {JSON.stringify(analysis.result_json, null, 2)}
+              </pre>
+            </>
+          )}
         </div>
       </div>
     </div>
