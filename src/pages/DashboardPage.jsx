@@ -62,22 +62,45 @@ export default function DashboardPage() {
 
   // 2) Poll analysis status whenever an analysisId appears
   useEffect(() => {
-    if (!analysisId) return
-    let timer
-    const poll = async () => {
-      const { data } = await supabase
-        .from('analyses')
-        .select('*')
-        .eq('id', analysisId)
-        .single()
-      setAnalysis(data)
-      if (data.status === 'pending' || data.status === 'running') {
-        timer = setTimeout(poll, 2000)
-      }
+  if (!analysisId) return;
+  let timer;
+
+  const poll = async () => {
+    // 1) Fetch exactly one row (or null)
+    const { data, error } = await supabase
+      .from('analyses')
+      .select('*')
+      .eq('id', analysisId)
+      .single();
+
+    // 2) Handle errors (except “no rows yet”)
+    if (error && error.code !== 'PGRST116') {
+      console.error('Analysis select error:', error);
+      return;
     }
-    poll()
-    return () => clearTimeout(timer)
-  }, [analysisId])
+
+    // 3) If no row yet, retry after delay
+    if (!data) {
+      timer = setTimeout(poll, 2000);
+      return;
+    }
+
+    // 4) We have a row—update local state
+    setAnalysis(data);
+
+    // 5) Continue polling while still pending/running
+    if (data.status === 'pending' || data.status === 'running') {
+      timer = setTimeout(poll, 2000);
+    }
+    // else -- status is 'complete' or 'error', so we stop polling
+  };
+
+  poll();
+
+  return () => {
+    if (timer) clearTimeout(timer);
+  };
+}, [analysisId]);
 
   const handleUpload = async (e) => {
   const file = e.target.files[0]
