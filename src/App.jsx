@@ -11,6 +11,7 @@ import CheckEmailPage from './pages/CheckEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import CompleteProfilePage from './pages/CompleteProfilePage'
 import ProfileEditPage from './pages/ProfileEditPage'
+import AnalysisResultsPage from './pages/AnalysisResultsPage'
 
 export default function App() {
   const { loading, profile } = useUser()
@@ -28,14 +29,23 @@ export default function App() {
           <Route path="/signup" element={<AppLayout><SignupPage/></AppLayout>} />
           <Route path="/check-email" element={<AppLayout><CheckEmailPage/></AppLayout>} />
 
-          <Route
-            path="/dashboard"
+          <Route path="/dashboard"
             element={
               profile
                 ? <AppLayout><DashboardPage/></AppLayout>
                 : <Navigate to="/login" replace />
             }
           />
+
+          {/* Individual analysis results (protected) */}
+           <Route
+             path="/analysis/:id"
+             element={
+               profile
+                 ? <AppLayout><AnalysisResultsPage/></AppLayout>
+                 : <Navigate to="/login" replace />
+             }
+           />
 
           <Route
             path="/profile/complete"
