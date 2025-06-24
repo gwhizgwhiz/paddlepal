@@ -2,104 +2,115 @@
 
 // @ts-ignore: Deno runtime import
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
-// pull in Supabase client via esm.sh
+// @ts-ignore: Deno runtime import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.28.0";
+// @ts-ignore: Deno runtime import
+import { encode } from "https://deno.land/std@0.181.0/encoding/base64.ts";
 
 declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
+  env: { get(key: string): string | undefined };
 };
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase    = createClient(supabaseUrl, serviceKey);
+const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const openAiApiKey   = Deno.env.get("OPENAI_API_KEY")!;
 
-const BUCKET = "match-videos";
+const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey",
+};
 
 serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
-  let payload: { id?: string };
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405, headers: CORS_HEADERS });
+  }
+
+  let payload: { id?: string; features?: any };
   try {
     payload = await req.json();
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return new Response("Invalid JSON", { status: 400, headers: CORS_HEADERS });
   }
 
-  const analysisId = payload.id;
-  if (!analysisId) {
-    return new Response("Missing analysis ID", { status: 400 });
+  const id = payload.id;
+  const features = payload.features;
+  if (!id || !features) {
+    return new Response("Missing id or features", { status: 400, headers: CORS_HEADERS });
   }
 
-  // 1) Fetch the queued analysis
-  const { data: row, error: selectErr } = await supabase
-    .from("analyses")
-    .select("user_id, video_path")
-    .eq("id", analysisId)
-    .single();
+  const prompt = `
+You are a sports scientist and expert pickleball coach.
+Here are the match features I extracted from a video:
+${JSON.stringify(features, null, 2)}
 
-  if (selectErr || !row) {
-    console.error("Fetch error:", selectErr);
-    return new Response("Not found", { status: 404 });
+1) Give me a one-sentence PERFORMANCE SUMMARY.
+2) List KEY METRICS as bullets (e.g. "Average shot speed: 2.3 units/s").
+3) Provide THREE SPECIFIC, ACTIONABLE RECOMMENDATIONS, each tied to one metric.
+4) Echo back any time-stamped events in "events".
+
+Return exactly this JSON shape:
+{
+  "summary": "...",
+  "metrics": ["...", "...", "..."],
+  "recommendations": ["...", "...", "..."],
+  "events": [ /* original events */ ]
+}
+`;
+
+  const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openAiApiKey}`,
+      "Content-Type":  "application/json",
+    },
+    body: JSON.stringify({
+      model:       "gpt-3.5-turbo",
+      messages:    [{ role: "system", content: prompt }],
+      temperature: 0.3,
+      max_tokens:  300,
+    }),
+  });
+
+  if (!aiRes.ok) {
+    const err = await aiRes.text();
+    console.error("OpenAI error:", err);
+    await supabase.from("analyses").update({ status: "error" }).eq("id", id);
+    return new Response("AI inference failed", { status: 502, headers: CORS_HEADERS });
   }
 
-  const { user_id, video_path } = row;
-  // right before download in index.ts
-console.log("📥 Downloading from bucket ‘match-videos’: path =", video_path);
-console.log("📥 Attempting download of path:", video_path);
-
-
-
-  // 2) Download the video
-  const { data: fileData, error: downloadErr } = await supabase
-    .storage
-    .from(BUCKET)
-    .download(video_path);
-
-  if (downloadErr || !fileData) {
-    console.error("Download error:", downloadErr);
-    await supabase
-      .from("analyses")
-      .update({ status: "error" })
-      .eq("id", analysisId);
-    return new Response("Download failed", { status: 500 });
+  const aiJson = await aiRes.json();
+  let result;
+  try {
+    result = JSON.parse(aiJson.choices[0].message.content);
+  } catch (e) {
+    console.error("Parse error:", aiJson.choices[0].message.content);
+    await supabase.from("analyses").update({ status: "error" }).eq("id", id);
+    return new Response("Invalid AI response", { status: 502, headers: CORS_HEADERS });
   }
 
-  // 3) Run AI analysis (stub)
-  const result = {
-    note: `Processed by Edge Function at ${new Date().toISOString()}`,
-  };
-
-  // 4) Update the analysis row
   const { error: updateErr } = await supabase
     .from("analyses")
     .update({
-      status: "complete",
-      result_json: result,
+      status:       "complete",
+      result_json:  result,
       completed_at: new Date().toISOString(),
     })
-    .eq("id", analysisId);
+    .eq("id", id);
 
   if (updateErr) {
     console.error("Update error:", updateErr);
-    return new Response("Update failed", { status: 500 });
+    return new Response("Update failed", { status: 500, headers: CORS_HEADERS });
   }
 
-  // 5) Clean up the video file
-  const { error: removeErr } = await supabase
-    .storage
-    .from(BUCKET)
-    .remove([video_path]);
-
-  if (removeErr) {
-    console.warn("Cleanup warning:", removeErr);
-  }
-
-  return new Response(JSON.stringify({ success: true, analysisId }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
+  return new Response(JSON.stringify({ success: true }), {
+    status:  200,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
 });
