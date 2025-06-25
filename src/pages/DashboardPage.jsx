@@ -1,13 +1,14 @@
 // src/pages/DashboardPage.jsx
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import PlayerPickerModal from '../components/PlayerPickerModal'
 import supabase from '../supabaseClient'
 import LoadingSpinner from '../components/LoadingSpinner'
 import maleAvatar from '../assets/avatars/male.png'
 import femaleAvatar from '../assets/avatars/female.png'
 import neutralAvatar from '../assets/avatars/neutral.png'
 import { format } from 'date-fns'
-import analyzeVideoLocally from '../utils/analyzeVideoLocal'  // <-- ensure this filename matches
+import analyzeVideoLocally from '../utils/analyzeVideoLocal'
 import '../App.css'
 
 const PROJECT_REF  = import.meta.env.VITE_SUPABASE_PROJECT_REF
@@ -27,11 +28,15 @@ export default function DashboardPage() {
   const [analysis, setAnalysis]     = useState(null)
   const [history, setHistory]       = useState([])
 
+  // Player picker state
+  const [pickerOpen, setPickerOpen]               = useState(false)
+  const [pendingFile, setPendingFile]             = useState(null)
+  const [pendingAnalysisId, setPendingAnalysisId] = useState(null)
+
   // 1) Fetch profile + paddle
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user: authUser }, error: authError } =
-        await supabase.auth.getUser()
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
       if (authError || !authUser) return navigate('/signup')
 
       const { data: userData } = await supabase
@@ -62,10 +67,7 @@ export default function DashboardPage() {
   // 2) Load analysis history
   useEffect(() => {
     const loadHistory = async () => {
-      const {
-        data: all,
-        error: histErr,
-      } = await supabase
+      const { data: all, error: histErr } = await supabase
         .from('analyses')
         .select('id, inserted_at, status')
         .eq('user_id', (await supabase.auth.getUser()).data.user.id)
@@ -106,10 +108,17 @@ export default function DashboardPage() {
     return () => clearTimeout(timer)
   }, [analysisId])
 
-  // 4) Upload, local analyze, edge → Supabase
+  // 4) Upload handler opens picker and defers analysis
   const handleUpload = async (e) => {
+    console.log('handleUpload start')
     const file = e.target.files[0]
-    if (!file) return
+    if (!file) return   
+    // 🚫 enforce size limit (50 MB)
+    const MAX_MB = 50
+    if (file.size > MAX_MB * 1024 * 1024) {
+      alert(`Please pick a video smaller than ${MAX_MB} MB (yours is ${(file.size/1024/1024).toFixed(1)} MB).`)
+      return
+    }
     setUploading(true)
 
     // a) upload to storage
@@ -131,17 +140,27 @@ export default function DashboardPage() {
       return
     }
 
-    // c) local vision/heuristics
+    // c) store for picker & open
+    setPendingFile(file)
+    setPendingAnalysisId(newId)
+    console.log('opening picker for file:', file.name)
+    setPickerOpen(true)
+    setUploading(false)
+    return
+  }
+
+  // 5) Called by picker: run heuristics and edge function
+  const handlePick = async (selectedIndex) => {
+    setPickerOpen(false)
+
     let features
     try {
-      features = await analyzeVideoLocally(file)
+      features = await analyzeVideoLocally(pendingFile, selectedIndex)
     } catch (err) {
       console.error('Local analysis failed:', err)
-      setUploading(false)
       return
     }
 
-    // d) call Edge Function
     const res = await fetch(FUNCTION_URL, {
       method: 'POST',
       headers: {
@@ -149,20 +168,18 @@ export default function DashboardPage() {
         apikey: ANON_KEY,
         Authorization: `Bearer ${ANON_KEY}`,
       },
-      body: JSON.stringify({ id: newId, features }),
+      body: JSON.stringify({ id: pendingAnalysisId, features }),
     })
-    if (!res.ok) {
-      console.error('process-analysis failed:', await res.text())
-    }
+    if (!res.ok) console.error('process-analysis failed:', await res.text())
 
-    // e) update UI
-    setAnalysisId(newId)
+    setAnalysisId(pendingAnalysisId)
     setHistory(h => [
-      { id: newId, inserted_at: new Date().toISOString(), status: 'pending' },
+      { id: pendingAnalysisId, inserted_at: new Date().toISOString(), status: 'pending' },
       ...h,
     ])
-    setAnalysis(null)
-    setUploading(false)
+
+    setPendingFile(null)
+    setPendingAnalysisId(null)
   }
 
   if (loading) return <LoadingSpinner />
@@ -259,6 +276,15 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Player Picker Modal */}
+      {pickerOpen && (
+        <PlayerPickerModal
+          file={pendingFile}
+          onConfirm={handlePick}
+          onCancel={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   )
 }

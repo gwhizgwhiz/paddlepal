@@ -458,3 +458,40 @@ body {
 .history-link { color: var(--primary); text-decoration: underline; }
 .history-status { font-weight: bold; text-transform: capitalize; }
 
+/* App.css or PlayerPickerModal.css */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  position: relative;       /* ensures it’s above the overlay layer */
+  z-index: 10000;           /* one more than overlay if needed */
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+
+  /* all clicks on modal-content go to its children */
+  pointer-events: auto;
+}
+
+.picker-canvas {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
