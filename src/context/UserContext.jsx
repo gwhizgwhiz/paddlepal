@@ -17,74 +17,69 @@ export function UserProvider({ children }) {
   const [profile, setProfile] = useState(null) // Your players/coaches row
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let mounted = true
-
-    async function init() {
-      setLoading(true)
-      try {
-        // 1) Read auth user from localStorage
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser()
-
-        if (!mounted) return
-        if (!authUser) {
-          setUser(null)
-          setProfile(null)
-          return
-        }
-
-        // 2) Try players table
-        let prof = null
-        const { data: player, error: playerErr } = await supabase
-          .from('players')
+  // Shared init logic to fetch authUser and profile
+  const init = async (authUser) => {
+    setLoading(true)
+    if (!authUser) {
+      setUser(null)
+      setProfile(null)
+      setLoading(false)
+      return
+    }
+    try {
+      // fetch profile from players or coaches
+      let prof = null
+      const { data: player, error: playerErr } = await supabase
+        .from('players')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .single()
+      if (player) prof = player
+      else {
+        const { data: coach, error: coachErr } = await supabase
+          .from('coaches')
           .select('*')
           .eq('user_id', authUser.id)
           .single()
-
-        if (player) {
-          prof = player
-        } else {
-          // 3) Fallback to coaches
-          const { data: coach, error: coachErr } = await supabase
-            .from('coaches')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .single()
-
-          if (coach) {
-            prof = coach
-          } else {
-            console.warn('No profile found:', playerErr || coachErr)
-          }
-        }
-
-        // 4) Determine avatar: metadata → DB → default
-        const avatar_url =
-          authUser.user_metadata?.avatar_url ||
-          prof?.avatar_url ||
-          DEFAULT_AVATARS[prof?.gender] ||
-          DEFAULT_AVATARS.prefer_not_to_say
-
-        // 5) Set context state
-        setUser({ ...authUser, avatar_url })
-        setProfile(prof || null)
-      } catch (err) {
-        console.error('UserContext init error:', err)
-        setUser(null)
-        setProfile(null)
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+        if (coach) prof = coach
       }
-    }
 
-    init()
+      // determine avatar
+      const avatar_url =
+        authUser.user_metadata?.avatar_url ||
+        prof?.avatar_url ||
+        DEFAULT_AVATARS[prof?.gender] ||
+        DEFAULT_AVATARS.prefer_not_to_say
+
+      setUser({ ...authUser, avatar_url })
+      setProfile(prof)
+    } catch (err) {
+      console.error('UserContext init error:', err)
+      setUser(null)
+      setProfile(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    // initial load
+    let mounted = true
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+      init(session?.user)
+    })
+
+    // subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        init(session?.user)
+      }
+    )
 
     return () => {
       mounted = false
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -107,9 +102,7 @@ export function UserProvider({ children }) {
       .eq('user_id', user.id)
 
     // 2) update auth metadata
-    await supabase.auth.updateUser({
-      data: { avatar_url: newUrl, gender: user.user_metadata?.gender },
-    })
+    await supabase.auth.updateUser({ data: { avatar_url: newUrl, gender: user.user_metadata?.gender } })
 
     // 3) update in-memory
     setUser((u) => (u ? { ...u, avatar_url: newUrl } : u))

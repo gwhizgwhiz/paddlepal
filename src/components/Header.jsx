@@ -17,8 +17,8 @@ export default function Header() {
           <AvatarMenu />
         ) : (
           <nav className="nav-links">
-            <Link to="/login">Log In</Link>
-            <Link to="/signup">Sign Up</Link>
+            <Link to="/login" className="btn btn-outline btn-sm">Log In</Link>
+            <Link to="/signup"className="btn btn-outline btn-sm">Sign Up</Link>
           </nav>
         )}
       </div>
