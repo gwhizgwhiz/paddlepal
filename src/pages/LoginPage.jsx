@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import supabase from '../supabaseClient'
+import Card from '../components/Card'
 import '../App.css'
 
 export default function LoginPage() {
@@ -32,8 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page-wrapper">
-      <div className="signup-card">
+        <Card>
         <h2>Log In</h2>
         <form onSubmit={handleLogin} className="page-form">
           <input
@@ -65,7 +65,6 @@ export default function LoginPage() {
           </p>
           <p className="muted">Forgot password? (coming soon)</p>
         </div>
-      </div>
-    </div>
+        </Card>
   )
 }

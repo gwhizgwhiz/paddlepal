@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import PlayerPickerModal from '../components/PlayerPickerModal'
 import supabase from '../supabaseClient'
+import Card from '../components/Card'
 import LoadingSpinner from '../components/LoadingSpinner'
 import maleAvatar from '../assets/avatars/male.png'
 import femaleAvatar from '../assets/avatars/female.png'
@@ -193,98 +194,78 @@ export default function DashboardPage() {
       : neutralAvatar)
 
   return (
-    <div className="page-container">
-      {/* Profile */}
-      <div className="dashboard-section">
-        <div className="section-header">My Profile</div>
-        <div className="profile-card">
-          <img src={avatarUrl} className="profile-avatar" />
-          <div className="profile-details">
-            <strong>{user.full_name}</strong><br />
-            {player.city}, {player.state}<br />
-            <small>{user.role}</small>
-            <p>
-              Rating: <strong>{player.rating_level}</strong><br />
-              Play Style: <strong>{player.play_style}</strong><br />
-              Handedness: <strong>{player.handedness}</strong><br />
-              Surface: <strong>{player.preferred_surface}</strong><br />
-              Paddle:{' '}
-              <strong>
-                {paddle
-                  ? `${paddle.brand} ${paddle.model}`
-                  : player.custom_paddle || 'Not specified'}
-              </strong>
-            </p>
+  <Card>
+      <div className="dashboard-grid">
+
+        {/* LEFT: Profile */}
+        <div className="dashboard-sidebar">
+          <div className="dashboard-section">
+            <h3 className="section-header">My Profile</h3>
+            <div className="profile-card">
+              <img src={avatarUrl} className="profile-avatar" alt="avatar"/>
+              <div className="profile-details">
+                <strong>{user.full_name}</strong><br />
+                {player.city}, {player.state}<br />
+                <small>{user.role}</small>
+                <p>Rating: <strong>{player.rating_level}</strong></p>
+                <p>Play Style: <strong>{player.play_style}</strong></p>
+                <p>Handedness: <strong>{player.handedness}</strong></p>
+                <p>Surface: <strong>{player.preferred_surface}</strong></p>
+                <p>Paddle: <strong>{paddle ? `${paddle.brand} ${paddle.model}` : player.custom_paddle || 'Not specified'}</strong></p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* History */}
-      <div className="dashboard-section">
-        <div className="section-header">My Analyses</div>
-        <ul className="history-list">
-          {history.length === 0 && <li>No analyses yet.</li>}
-          {history.map(({ id, inserted_at, status }) => (
-            <li key={id} className={`history-item status-${status}`}>
-              <span className="history-date">
-                {format(new Date(inserted_at), 'PPP p')}
-              </span>
-              {status === 'complete' ? (
-                <Link to={`/analysis/${id}`} className="history-link">
-                  View Results
-                </Link>
-              ) : (
-                <span className="history-status">{status}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
+        {/* RIGHT: Upload/Results then History */}
+        <div className="dashboard-main">
 
-      {/* Upload & Analysis */}
-      <div className="dashboard-section">
-        <div className="section-header">Upload & AI Analysis</div>
-        <div className="profile-card">
-          <label className="btn-small btn-outline">
-            {uploading ? 'Uploading…' : analysisId ? 'Re-upload Video' : 'Upload Match'}
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleUpload}
-              style={{ display: 'none' }}
-              disabled={uploading}
-            />
-          </label>
-
-          {!analysisId && <p>Click to upload a match video.</p>}
-          {analysisId && !analysis && <p>Queued for analysis…</p>}
-          {analysis && analysis.status !== 'complete' && (
-            <p>Analysis is {analysis.status}…</p>
-          )}
-          {analysis && analysis.status === 'complete' && (
-            <>
-              <h4>Results</h4>
-              <div className="results-list">
+          {/* AI Results first */}
+          {analysis && analysis.status==='complete' && (
+            <div className="dashboard-section">
+              <h3 className="section-header">Upload & AI Analysis</h3>
+              <div className="results-card">
+                <h4>Results — {format(new Date(analysis.inserted_at), 'PPP p')}</h4>
+                {/* <h4>Latest Results Summary</h4> */}
                 <p>{analysis.result_json.summary}</p>
                 <ul>
-                  {analysis.result_json.recommendations.map((tip, i) => (
-                    <li key={i}>{tip}</li>
-                  ))}
+                  {analysis.result_json.recommendations.map((r,i)=><li key={i}>{r}</li>)}
                 </ul>
               </div>
-            </>
+            </div>
           )}
+
+          {/* Upload button below results */}
+          <div className="dashboard-section">
+            <label className="btn-small btn-outline">
+              {uploading?'Uploading…':'Upload Video'}
+              <input type="file" accept="video/*" onChange={handleUpload} hidden />
+            </label>
+          </div>
+
+          {/* History */}
+          <div className="dashboard-section">
+            <h3 className="section-header">My Analyses</h3>
+            <ul className="history-list">
+              {history.map(({id, inserted_at, status})=> (
+                <li key={id} className="history-item">
+                  <span>{format(new Date(inserted_at),'PPP p')}</span>
+                  {status==='complete'
+                    ?<Link to={`/analysis/${id}`} className="history-link">View Results</Link>
+                    :<span className="history-status">{status}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
         </div>
       </div>
 
-      {/* Player Picker Modal */}
-      {pickerOpen && (
-        <PlayerPickerModal
-          file={pendingFile}
-          onConfirm={handlePick}
-          onCancel={() => setPickerOpen(false)}
-        />
-      )}
-    </div>
-  )
+      {pickerOpen &&
+        <PlayerPickerModal file={pendingFile} onConfirm={handlePick} onCancel={()=>setPickerOpen(false)} />
+      }
+    </Card>
+)
+
+
 }

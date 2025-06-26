@@ -104,6 +104,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 
 /* Wrapper for centering content */
@@ -192,12 +193,14 @@ body {
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 150ms ease-in-out;
-  margin-top: 1rem;;
+  margin-top: 1rem;
+  text-decoration: none;;
 }
 
 .btn-outline:hover {
   background-color: #6FBB6C;
   color: #fff;
+  text-decoration: none;
 }
 
 
@@ -446,10 +449,13 @@ body {
 .history-item {
   display: flex;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.25rem 0rem;
   background: var(--card-bg);
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
+  border-bottom: 1px solid #333;
+  font-size: 0.9rem;
+  margin: 0rem 2rem;
 }
 .history-item.status-pending { opacity: 0.7; }
 .history-item.status-running { opacity: 0.9; }
@@ -457,6 +463,10 @@ body {
 .history-date { font-size: .875rem; color: var(--text-muted); }
 .history-link { color: var(--primary); text-decoration: underline; }
 .history-status { font-weight: bold; text-transform: capitalize; }
+
+.history-item:last-child {
+  border-bottom: none;
+}
 
 /* App.css or PlayerPickerModal.css */
 .modal-overlay {
@@ -494,4 +504,64 @@ body {
   border: 1px solid #ccc;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* src/components/Card.css */
+.card {
+  background: #2c2c2c;
+  color: var(--text-primary, #fff);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  max-width: 600px;
+  width: 90%;
+  margin: 2rem auto; /* center horizontally with some top/bottom space */
+}
+
+/* wrap Card contents in two columns */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+}
+
+/* sidebar fixed width up to a max */
+.dashboard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* make the upload section stick as you scroll history */
+.upload-section {
+  position: sticky;
+  top: 1rem;
+  background: inherit;
+  z-index: 10;
+}
+
+.upload-card {
+  background: #2c2c2c;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+/* history column gets its own scroll if too tall */
+.dashboard-history {
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+}
+
+/* small tweak so the Card padding isn't too tight */
+.card > .dashboard-grid {
+  padding-bottom: 2rem;
+}
+
+.results-card {
+  background: #232323;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.3;
 }

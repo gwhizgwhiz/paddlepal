@@ -4,8 +4,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import supabase from '../supabaseClient'
+import Card from '../components/Card'
 import { Link } from 'react-router-dom'
-
 import '../App.css'
 
 export default function SignupPage() {
@@ -51,8 +51,7 @@ if (signUpError || isAlreadyRegistered) {
   }
 
   return (
-    <div className="page-wrapper">
-      <div className="signup-card">
+        <Card>
         <h2>Sign Up</h2>
         <form onSubmit={handleSignup} className="page-form">
           <input
@@ -84,7 +83,7 @@ if (signUpError || isAlreadyRegistered) {
 
           <select value={role} onChange={(e) => setRole(e.target.value)} className="input-dark">
             <option value="player">Player</option>
-            <option value="coach">Coach</option>
+            {/* <option value="coach">Coach</option> */}
           </select>
 {/* 
           <input
@@ -100,10 +99,10 @@ if (signUpError || isAlreadyRegistered) {
           </button>
         </form>
         {error && <p className="error">{error}</p>}
+
         <div className="form-footer">
           <p>Already have an account? <Link to="/login">Log In</Link></p>
         </div>
-      </div>
-    </div>
+        </Card>
   )
 }
