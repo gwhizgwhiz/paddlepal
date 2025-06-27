@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage'
 import CompleteProfilePage from './pages/CompleteProfilePage'
 import ProfileEditPage from './pages/ProfileEditPage'
 import AnalysisResultsPage from './pages/AnalysisResultsPage'
+import ProfilePage          from './pages/ProfilePage'
 
 export default function App() {
   const { loading, profile } = useUser()
@@ -64,6 +65,12 @@ export default function App() {
                 : <Navigate to="/profile/complete" replace />
             }
           />
+
+          <Route path="/profile" element={
+           profile
+             ? <AppLayout><ProfilePage/></AppLayout>
+             : <Navigate to="/login" replace/>
+         }/>
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

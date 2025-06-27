@@ -34,6 +34,7 @@ export default function LoginPage() {
 
   return (
         <Card>
+          <div className="profile-card">
         <h2>Log In</h2>
         <form onSubmit={handleLogin} className="page-form">
           <input
@@ -64,6 +65,7 @@ export default function LoginPage() {
             Don’t have an account? <Link to="/signup">Sign up</Link>
           </p>
           <p className="muted">Forgot password? (coming soon)</p>
+        </div>
         </div>
         </Card>
   )

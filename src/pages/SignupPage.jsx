@@ -52,6 +52,7 @@ if (signUpError || isAlreadyRegistered) {
 
   return (
         <Card>
+          <div className="profile-card">
         <h2>Sign Up</h2>
         <form onSubmit={handleSignup} className="page-form">
           <input
@@ -102,6 +103,7 @@ if (signUpError || isAlreadyRegistered) {
 
         <div className="form-footer">
           <p>Already have an account? <Link to="/login">Log In</Link></p>
+        </div>
         </div>
         </Card>
   )

@@ -407,7 +407,7 @@ body {
 }
 
 .section-header {
-  Margin-bottom: 1rem;
+  margin-bottom: 1rem;
 }
 
 /* let form-row children shrink instead of forcing 100% */
@@ -455,7 +455,7 @@ body {
   margin-bottom: 0.5rem;
   border-bottom: 1px solid #333;
   font-size: 0.9rem;
-  margin: 0rem 2rem;
+  /* margin: 0rem 2rem; */
 }
 .history-item.status-pending { opacity: 0.7; }
 .history-item.status-running { opacity: 0.9; }
@@ -513,7 +513,7 @@ body {
   padding: 2rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  max-width: 600px;
+  max-width: 700px;
   width: 90%;
   margin: 2rem auto; /* center horizontally with some top/bottom space */
 }
@@ -564,4 +564,48 @@ body {
   margin-top: 0.75rem;
   font-size: 0.9rem;
   line-height: 1.3;
+}
+
+/* App.css */
+.profile-page {
+  text-align: center;
+}
+.profile-avatar-large {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  border: 2px solid var(--pb-green);
+  object-fit: cover;
+}
+.profile-field {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.5rem 0;
+}
+.profile-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+.profile-value {
+  font-weight: 700;
+}
+
+.input-dark {
+  background: #2c2c2c;
+  border: 1px solid #444;
+  color: white;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* Override Chrome’s autofill background on dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  /* paint your dark background back on */
+  -webkit-box-shadow: 0 0 0 1000px #2c2c2c inset !important;
+  box-shadow:          0 0 0 1000px #2c2c2c inset !important;
+  -webkit-text-fill-color: #fff !important;
 }
